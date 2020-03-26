@@ -3,10 +3,12 @@ server {
   index index.php;
 
   server_name software-deals.ltd new.software-deals.ltd www.software-deals.ltd;
+  
   location ^~ /app/ {
 	  deny all;
 	  return 403;
   }
+  
   location ~ \.php$ {
     include fastcgi_params;
     include snippets/fastcgi-php.conf;
