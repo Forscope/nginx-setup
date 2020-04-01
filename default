@@ -4,6 +4,8 @@ server {
 
   server_name forscope.ltd www.forscope.ltd;
   
+  client_max_body_size 20m;
+  
   location ^~ /app/ {
 	  deny all;
 	  return 403;
