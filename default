@@ -22,6 +22,15 @@ server {
      return 301 https://www.$host$request_uri;
   }
 
+  #change Krizan - redirecty index.php
+  if ($request_uri ~* "^(.*/)index\.php/(.*)$") {
+      return 301 /$2;
+  }
+
+  if ($request_uri ~* "^(.*/)index\.php$") {
+      return 301 /;
+  }
+
   # blocking app
   location ^~ /app/ {
     deny all;
