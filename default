@@ -1,45 +1,23 @@
-# default server (blocking calls to IP, different domains) on HTTP:80
-server {
-  server_name _;
-  listen 80 default_server;
-  location / {
-    return 444;
-  }
-}
-
-# SSL server
 server {
   root /var/www/html;
   index index.php;
 
-  server_name forscope.pl www.forscope.pl; # CHANGE HERE
-  listen 443 ssl http2;
-  
-  client_max_body_size 20M;
+  server_name app.forscope.eu;
 
-  # to www redirect
-  if ($host = forscope.pl){.  # CHANGE HERE
-     return 301 https://www.$host$request_uri;
-  }
+  client_max_body_size 100M;
 
-  #change Krizan - redirecty index.php
-  if ($request_uri ~* "^(.*/)index\.php/(.*)$") {
-      return 301 /$2;
-  }
-
-  if ($request_uri ~* "^(.*/)index\.php$") {
-      return 301 /;
-  }
-
-  # blocking app
   location ^~ /app/ {
     deny all;
     return 403;
   }
 
-  # PHP processing
+  # Protect vulnerable (include path for production server)
+  include /etc/nginx/sites-available/nginx-setup/_include/protect.dot.conf;
+  include /etc/nginx/sites-available/nginx-setup/_include/protect.slim.conf;
+
   location ~ \.php$ {
     include fastcgi_params;
+    fastcgi_read_timeout 600;
     include snippets/fastcgi-php.conf;
     fastcgi_pass unix:/run/php/php7.2-fpm.sock;
   }
@@ -50,25 +28,54 @@ server {
     try_files $uri $uri/ /index.php?$query_string;
   }
 
+  location /Pricelator {
+    try_files $uri $uri/ /Pricelator/index.php?$query_string;
+  }
+
+  location /Emailing {
+    disable_symlinks off;
+    try_files $uri $uri/ /Emailing/index.php?$query_string;
+  }
+
+  location /Mybonus/ {
+    index index.html;
+    autoindex on;
+  }
+
+
+  location /Bitrix24 {
+    try_files $uri $uri/ /Bitrix24/index.php?$query_string;
+  }
+
   location / {
     try_files $uri $uri/ /index.php?$query_string;
   }
 
-  # rest is managed by Certbot...
+  location ^~ /Private {
+    auth_basic "Restricted Content";
+    auth_basic_user_file /etc/nginx/.htpasswd;
+
+    location ~ \.php$ {
+      include fastcgi_params;
+      include snippets/fastcgi-php.conf;
+      fastcgi_pass unix:/run/php/php7.2-fpm.sock;
+    }
+  }
+
+  listen 443 ssl; # managed by Certbot
+  ssl_certificate /etc/letsencrypt/live/app.forscope.eu/fullchain.pem; # managed by Certbot
+  ssl_certificate_key /etc/letsencrypt/live/app.forscope.eu/privkey.pem; # managed by Certbot
+  include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+  ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
 }
-# HTTP server (redirects)
+
+
 server {
-  server_name forscope.pl www.forscope.pl; # CHANGE HERE
+   if ($host = app.forscope.eu) {
+       return 301 https://$host$request_uri;
+   } # managed by Certbot
+
+  server_name app.forscope.eu;
   listen 80;
-  
-  if ($host = www.forscope.pl) { # CHANGE HERE
-    return 301 https://$host$request_uri;
-  }
-
-  if ($host = forscope.pl) { # CHANGE HERE
-    return 301 https://www.$host$request_uri;
-  }
-  
-  return 404; 
+  return 404; # managed by Certbot
 }
-
